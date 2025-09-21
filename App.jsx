@@ -171,7 +171,19 @@ const BottleIcon = ({ className }) => (
       <main className="bg-gray-50 min-h-screen p-4 sm:p-6 md:p-8 font-sans">
         <div className="max-w-7xl mx-auto">
           <header className="mb-6">
-            <h1 className="text-4xl font-bold text-gray-800">Baby's Milk Tracker</h1>
+          <h1 className="text-4xl font-bold text-gray-800 inline-flex items-center gap-3">
+  Hamzu's Milk Tracker
+  <img
+    src="ae0684c3-5eb4-4ffa-a45d-200b725ec6d2.webp"
+    alt="Hamzu"
+    className="w-12 h-12 rounded-full rotate-45"
+    width="60" height="80"
+    loading="lazy" decoding="async"
+  />
+</h1>
+
+          
+
             <p className="text-lg text-gray-500">Daily Consumption Dashboard</p>
           </header>
           <div className="border-b border-gray-200 mb-8">
