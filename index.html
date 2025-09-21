@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Baby Milk Tracker</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Simple style to let you know the app is loading */
+      #root:empty::before {
+        content: "Loading App...";
+        display: block;
+        text-align: center;
+        padding-top: 5rem;
+        font-size: 1.5rem;
+        color: #6b7280;
+      }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- 1. React Libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- 2. Recharts Library (for charts) -->
+    <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
+
+    <!-- 3. Babel (to compile JSX in the browser) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- 4. Your React Application Code -->
+    <script type="text/babel" src="App.jsx"></script>
+
+    <!-- 5. Render the App -->
+    <script type="text/babel">
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
