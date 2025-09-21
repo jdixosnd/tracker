@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 
 // --- Google API Configuration ---
 // IMPORTANT: You need to replace these with your own credentials for the "Add Entry" tab to work.
-const CLIENT_ID = 'YOUR_CLIENT_ID.apps.googleusercontent.com'; // <-- PASTE YOUR CLIENT ID HERE
+const CLIENT_ID = '845430548717-e27otsbdprsb18vhe2slj8cfsio19mg5.apps.googleusercontent.com'; // <-- PASTE YOUR CLIENT ID HERE
 const SPREADSHEET_ID = '1tw86AUy7oP4KMWTi-phkF1Z6Dw3qkoioVdMedqmP2no';
 
 // --- Helper Icons (as SVG components for the web) ---
