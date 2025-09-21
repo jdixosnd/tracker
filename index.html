@@ -22,25 +22,27 @@
     <div id="root"></div>
 
     <!-- 1. React Libraries -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js" defer></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" defer></script>
-    
-    <!-- 2. Recharts Library (for charts) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js" defer></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 
-    <!-- 3. Babel (to compile JSX in the browser) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js" defer></script>
+  <!-- Recharts UMD requires PropTypes on window -->
+  <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
 
-    <!-- 4. Your React Application Code -->
-    <script type="text/babel" src="App.jsx" defer></script>
+  <!-- Recharts (after prop-types) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
 
-    <!-- 5. Render the App -->
-    <!-- This final script to render the app also needs to be deferred -->
-    <script type="text/babel" defer>
-        const container = document.getElementById('root');
-        const root = ReactDOM.createRoot(container);
-        root.render(<App />);
-    </script>
+  <!-- Babel (JSX compiler) – tell it to use the React preset -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Your app code (compiled by Babel) -->
+  <script type="text/babel" data-presets="react" src="App.jsx"></script>
+
+  <!-- Render AFTER App.jsx is compiled -->
+  <script type="text/babel" data-presets="react">
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    root.render(<App />);
+  </script>
 </body>
 </html>
 

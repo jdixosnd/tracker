@@ -4,7 +4,7 @@ const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsiv
 
 // --- Google API Configuration ---
 // IMPORTANT: You need to replace these with your own credentials for the "Add Entry" tab to work.
-const CLIENT_ID = '845430548717-vr2fna69mkrnarq7hm53bal2icn02fpj.apps.googleusercontent.com'; // <-- local
+const CLIENT_ID = '845430548717-e27otsbdprsb18vhe2slj8cfsio19mg5.apps.googleusercontent.com'; 
 const SPREADSHEET_ID = '1tw86AUy7oP4KMWTi-phkF1Z6Dw3qkoioVdMedqmP2no';
 
 // --- Helper Icons (as SVG components for the web) ---
@@ -100,37 +100,43 @@ const BottleIcon = ({ className }) => (
     }, []);
   
     useEffect(() => {
-      const scriptGapi = document.createElement('script');
-      scriptGapi.src = 'https://apis.google.com/js/api.js';
-      scriptGapi.async = true;
-      scriptGapi.defer = true;
-      scriptGapi.onload = () => window.gapi.load('client', () => {
-          window.gapi.client.init({
-              clientId: '845430548717-vr2fna69mkrnarq7hm53bal2icn02fpj.apps.googleusercontent.com',
+        // Load gapi
+        const scriptGapi = document.createElement('script');
+        scriptGapi.src = 'https://apis.google.com/js/api.js';
+        scriptGapi.async = true;
+        scriptGapi.defer = true;
+        scriptGapi.onload = () => window.gapi.load('client', () => {
+          window.gapi.client
+            .init({
+              // No clientId here; discoveryDocs is enough
               discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-          }).then(() => setGapiInited(true));
-      });
-      document.body.appendChild(scriptGapi);
-  
-      const scriptGis = document.createElement('script');
-      scriptGis.src = 'https://accounts.google.com/gsi/client';
-      scriptGis.async = true;
-      scriptGis.defer = true;
-      scriptGis.onload = () => {
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: '845430548717-vr2fna69mkrnarq7hm53bal2icn02fpj.apps.googleusercontent.com',
-          scope: 'https://www.googleapis.com/auth/spreadsheets',
-          callback: (tokenResponse) => {
-            if (tokenResponse && tokenResponse.access_token) {
-              setIsSignedIn(true);
-            }
-          },
+            })
+            .then(() => setGapiInited(true));
         });
-        setTokenClient(client);
-        setGisInited(true);
-      };
-      document.body.appendChild(scriptGis);
-    }, []);
+        document.body.appendChild(scriptGapi);
+      
+        // Load GIS
+        const scriptGis = document.createElement('script');
+        scriptGis.src = 'https://accounts.google.com/gsi/client';
+        scriptGis.async = true;
+        scriptGis.defer = true;
+        scriptGis.onload = () => {
+          const client = window.google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/spreadsheets',
+            callback: (tokenResponse) => {
+              if (tokenResponse?.access_token) {
+                // IMPORTANT: give the token to gapi so Sheets calls are authorized
+                window.gapi.client.setToken({ access_token: tokenResponse.access_token });
+                setIsSignedIn(true);
+              }
+            },
+          });
+          setTokenClient(client);
+          setGisInited(true);
+        };
+        document.body.appendChild(scriptGis);
+      }, []);
   
     useEffect(() => {
       fetchData();
@@ -328,7 +334,7 @@ const BottleIcon = ({ className }) => (
           try {
               await window.gapi.client.sheets.spreadsheets.values.append({
                   spreadsheetId: '1tw86AUy7oP4KMWTi-phkF1Z6Dw3qkoioVdMedqmP2no',
-                  range: 'Sheet1!A:G',
+                  range: 'Milk Tracking!A:G',
                   valueInputOption: 'USER_ENTERED',
                   resource: { values },
               });
