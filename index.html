@@ -22,20 +22,21 @@
     <div id="root"></div>
 
     <!-- 1. React Libraries -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" defer></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" defer></script>
     
     <!-- 2. Recharts Library (for charts) -->
-    <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js" defer></script>
 
     <!-- 3. Babel (to compile JSX in the browser) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js" defer></script>
 
     <!-- 4. Your React Application Code -->
-    <script type="text/babel" src="App.jsx"></script>
+    <script type="text/babel" src="App.jsx" defer></script>
 
     <!-- 5. Render the App -->
-    <script type="text/babel">
+    <!-- This final script to render the app also needs to be deferred -->
+    <script type="text/babel" defer>
         const container = document.getElementById('root');
         const root = ReactDOM.createRoot(container);
         root.render(<App />);
