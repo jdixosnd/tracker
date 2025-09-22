@@ -2,12 +2,30 @@
 // Requires React, Tailwind, and Recharts already available in your setup.
 
 const { useState, useEffect, useCallback, useRef } = React;
-const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } = Recharts;
-
+const {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, ComposedChart, ScatterChart, Scatter, ZAxis, AreaChart, Area, Cell
+} = Recharts;
 // --- Google API Configuration ---
 const CLIENT_ID = '845430548717-e27otsbdprsb18vhe2slj8cfsio19mg5.apps.googleusercontent.com';
 const SPREADSHEET_ID = '1tw86AUy7oP4KMWTi-phkF1Z6Dw3qkoioVdMedqmP2no';
+const keyFromDate = (d) => d.toLocaleDateString('en-CA'); // YYYY-MM-DD
 
+const formatHourLabel = (h) => {
+  const hour = h % 24;
+  const suffix = hour < 12 ? 'a' : 'p';
+  const base = hour % 12 === 0 ? 12 : hour % 12;
+  return `${base}${suffix}`;
+};
+
+// simple linear color between two hex colors for heatmap
+const lerpColor = (hex1, hex2, t) => {
+  const c1 = parseInt(hex1.slice(1), 16), c2 = parseInt(hex2.slice(1), 16);
+  const r = (c1 >> 16) + t * ((c2 >> 16) - (c1 >> 16));
+  const g = ((c1 >> 8) & 0xff) + t * (((c2 >> 8) & 0xff) - ((c1 >> 8) & 0xff));
+  const b = (c1 & 0xff) + t * ((c2 & 0xff) - (c1 & 0xff));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+};
 // --- Helper Icons (as SVG components for the web) ---
 const BottleIcon = ({ className }) => (
   <svg className={className} height="24" width="24" viewBox="0 0 24 24" fill="currentColor">
@@ -265,7 +283,84 @@ function DashboardComponent({ data, loading, error, fetchData }) {
     acc[day].items.push(item);
     return acc;
   }, {});
+  // ===== Hour-wise aggregation (by day) =====
+const hourlyByDay = data.reduce((acc, item) => {
+  const dayKey = keyFromDate(item.date);
+  if (!acc[dayKey]) {
+    acc[dayKey] = Array.from({ length: 24 }, (_, h) => ({ hour: h, consumed: 0 }));
+  }
+  const h = item.date.getHours();
+  acc[dayKey][h].consumed += Number(item.consumed || 0);
+  return acc;
+}, {});
 
+// day selection for hour-wise
+const allDayKeysAsc = Object.keys(dailyData).sort();
+const defaultDayKey = allDayKeysAsc.length ? allDayKeysAsc[allDayKeysAsc.length - 1] : '';
+const [selectedDay, setSelectedDay] = React.useState(defaultDayKey);
+useEffect(() => {
+  if (defaultDayKey && selectedDay !== defaultDayKey && !hourlyByDay[selectedDay]) {
+    setSelectedDay(defaultDayKey);
+  }
+}, [defaultDayKey]); // eslint-disable-line
+
+// chart rows for selected day (per-hour + cumulative)
+const hourlyRowsRaw = hourlyByDay[selectedDay] || Array.from({ length: 24 }, (_, h) => ({ hour: h, consumed: 0 }));
+let _running = 0;
+const hourlyChartData = hourlyRowsRaw.map(({ hour, consumed }) => {
+  _running += consumed;
+  return { hour, hourLabel: formatHourLabel(hour), Consumed: Math.round(consumed), Cumulative: Math.round(_running) };
+});
+
+// ===== Average by Hour (last 14 days) =====
+const last14Keys = allDayKeysAsc.slice(-14);
+const avgHour = Array.from({ length: 24 }, (_, h) => {
+  let sum = 0, days = 0;
+  last14Keys.forEach(k => {
+    if (hourlyByDay[k]) { sum += hourlyByDay[k][h].consumed; days += 1; }
+  });
+  return { hour: h, hourLabel: formatHourLabel(h), Avg: days ? Math.round(sum / days) : 0 };
+});
+const avgHourTotal = avgHour.reduce((s, r) => s + r.Avg, 0);
+
+// ===== Heatmap: Hour × Day (last 10 days) =====
+const last10Keys = allDayKeysAsc.slice(-10);
+const heatmapPoints = [];
+let heatMax = 0;
+last10Keys.forEach((k, idx) => {
+  const row = hourlyByDay[k] || Array.from({ length: 24 }, (_, h) => ({ hour: h, consumed: 0 }));
+  row.forEach(({ hour, consumed }) => {
+    heatmapPoints.push({
+      x: hour, y: idx, z: consumed,
+      dayKey: k, hourLabel: formatHourLabel(hour),
+    });
+    heatMax = Math.max(heatMax, consumed);
+  });
+});
+
+// color function for heatmap cells
+const heatColor = (z) => {
+  if (heatMax === 0) return '#e5e7eb'; // gray-200
+  const t = Math.min(1, z / heatMax);
+  return lerpColor('#dbeafe', '#1d4ed8', t); // light blue -> deep blue
+};
+
+// build day labels (top is most recent)
+const heatDayLabels = [...last10Keys].reverse().map(k =>
+  `${dateFromKey(k).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+);
+
+// ===== Gaps between feeds (minutes) across timeline =====
+const sortedAll = [...data].sort((a, b) => a.date - b.date);
+const gaps = [];
+for (let i = 1; i < sortedAll.length; i += 1) {
+  const dt = (sortedAll[i].date - sortedAll[i - 1].date) / (60 * 1000); // minutes
+  gaps.push({
+    idx: i,
+    when: sortedAll[i].date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    GapMins: Math.round(dt),
+  });
+}
   const dailyTotals = Object.values(dailyData).map(d => d.consumedTotal);
   const averageConsumption = dailyTotals.length > 0
     ? (dailyTotals.reduce((a, b) => a + b, 0) / dailyTotals.length).toFixed(0)
@@ -459,6 +554,137 @@ function DashboardComponent({ data, loading, error, fetchData }) {
             </ResponsiveContainer>
           </div>
         </div>
+
+        {/* NEW: Hour-wise (Selected Day) */}
+<div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-8">
+  <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+    <h2 className="text-2xl font-bold text-gray-700">
+      Hour-wise Consumption <span className="text-sm font-normal text-gray-500">
+        ({selectedDay ? new Date(selectedDay).toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' }) : 'No data'})
+      </span>
+    </h2>
+    <div className="flex items-center gap-2">
+      <label className="text-sm text-gray-600">Day:</label>
+      <select
+        value={selectedDay}
+        onChange={(e) => setSelectedDay(e.target.value)}
+        className="border rounded-md px-2 py-1 text-sm"
+      >
+        {[...allDayKeysAsc].reverse().map(k => (
+          <option key={k} value={k}>
+            {dateFromKey(k).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+          </option>
+        ))}
+      </select>
+    </div>
+  </div>
+  <div style={{ width: '100%', height: 320 }}>
+    <ResponsiveContainer>
+      <ComposedChart data={hourlyChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+        <XAxis dataKey="hourLabel" stroke="#666" />
+        <YAxis stroke="#666" />
+        <Tooltip wrapperClassName="rounded-md shadow-md" />
+        <Legend />
+        <Bar dataKey="Consumed" fill="#60a5fa" />
+        <Line type="monotone" dataKey="Cumulative" stroke="#16a34a" strokeWidth={3} dot={{ r: 3 }} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  </div>
+  <p className="text-xs text-gray-500 mt-2">Cumulative = total consumed up to that hour.</p>
+</div>
+
+{/* NEW: Average by Hour (last 14 days) */}
+<div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-8">
+  <div className="flex items-center justify-between mb-4">
+    <h2 className="text-2xl font-bold text-gray-700">
+      Average by Hour <span className="text-sm font-normal text-gray-500">(last 14 days)</span>
+    </h2>
+    <span className="text-sm text-gray-500">Total avg/day window: {avgHourTotal} ml</span>
+  </div>
+  <div style={{ width: '100%', height: 300 }}>
+    <ResponsiveContainer>
+      <BarChart data={avgHour} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+        <XAxis dataKey="hourLabel" stroke="#666" />
+        <YAxis stroke="#666" />
+        <Tooltip wrapperClassName="rounded-md shadow-md" />
+        <Legend />
+        <Bar dataKey="Avg" fill="#34d399" />
+      </BarChart>
+    </ResponsiveContainer>
+  </div>
+  <p className="text-xs text-gray-500 mt-2">Shows typical feeding hours across the last 14 days.</p>
+</div>
+
+{/* NEW: Hour × Day Heatmap (last 10 days) */}
+<div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-8">
+  <div className="flex items-center justify-between mb-4">
+    <h2 className="text-2xl font-bold text-gray-700">Hour × Day Heatmap</h2>
+    <span className="text-sm text-gray-500">Last 10 days</span>
+  </div>
+  <div style={{ width: '100%', height: 360 }}>
+    <ResponsiveContainer>
+      <ScatterChart margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+        <XAxis
+          type="number"
+          dataKey="x"
+          name="Hour"
+          tickFormatter={formatHourLabel}
+          domain={[0, 23]}
+          stroke="#666"
+        />
+        <YAxis
+          type="number"
+          dataKey="y"
+          name="Day"
+          tickFormatter={(v) => heatDayLabels[v] ?? ''}
+          domain={[0, Math.max(0, heatDayLabels.length - 1)]}
+          stroke="#666"
+        />
+        <ZAxis type="number" dataKey="z" range={[60, 220]} name="Consumed (ml)" />
+        <Tooltip
+          cursor={{ strokeDasharray: '3 3' }}
+          formatter={(value, name, props) => {
+            if (name === 'z') return [`${value} ml`, 'Consumed'];
+            return [value, name];
+          }}
+          labelFormatter={() => ''}
+        />
+        <Legend />
+        <Scatter name="Feeds" data={[...heatmapPoints].reverse()}>
+          {[...heatmapPoints].reverse().map((pt, i) => (
+            <Cell key={i} fill={heatColor(pt.z)} />
+          ))}
+        </Scatter>
+      </ScatterChart>
+    </ResponsiveContainer>
+  </div>
+  <p className="text-xs text-gray-500 mt-2">Darker = more consumed. Quickly spot peak hours per day.</p>
+</div>
+
+{/* NEW: Gap Between Feeds (minutes) */}
+<div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-8">
+  <div className="flex items-center justify-between mb-4">
+    <h2 className="text-2xl font-bold text-gray-700">Gap Between Feeds (minutes)</h2>
+    <span className="text-sm text-gray-500">All entries (chronological)</span>
+  </div>
+  <div style={{ width: '100%', height: 300 }}>
+    <ResponsiveContainer>
+      <LineChart data={gaps} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+        <XAxis dataKey="when" hide />
+        <YAxis stroke="#666" />
+        <Tooltip wrapperClassName="rounded-md shadow-md" />
+        <Legend />
+        <Line type="monotone" dataKey="GapMins" stroke="#ef4444" strokeWidth={3} dot={{ r: 3 }} />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+  <p className="text-xs text-gray-500 mt-2">Shows pacing—are gaps getting longer/shorter over time?</p>
+</div>
+
       </div>
 
       {/* Grouped Recent Feeds (Accordion by Day) */}
