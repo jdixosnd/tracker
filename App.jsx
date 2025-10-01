@@ -325,9 +325,10 @@ const avgHourTotal = avgHour.reduce((s, r) => s + r.Avg, 0);
 
 // ===== Heatmap: Hour × Day (last 10 days) =====
 const last10Keys = allDayKeysAsc.slice(-10);
+const dayOrder = [...last10Keys].reverse();
 const heatmapPoints = [];
 let heatMax = 0;
-last10Keys.forEach((k, idx) => {
+dayOrder.forEach((k, idx) => {
   const row = hourlyByDay[k] || Array.from({ length: 24 }, (_, h) => ({ hour: h, consumed: 0 }));
   row.forEach(({ hour, consumed }) => {
     heatmapPoints.push({
@@ -642,6 +643,8 @@ for (let i = 1; i < sortedAll.length; i += 1) {
           tickFormatter={(v) => heatDayLabels[v] ?? ''}
           domain={[0, Math.max(0, heatDayLabels.length - 1)]}
           stroke="#666"
+          reversed
+
         />
         <ZAxis type="number" dataKey="z" range={[60, 220]} name="Consumed (ml)" />
         <Tooltip
@@ -653,8 +656,8 @@ for (let i = 1; i < sortedAll.length; i += 1) {
           labelFormatter={() => ''}
         />
         <Legend />
-        <Scatter name="Feeds" data={[...heatmapPoints].reverse()}>
-          {[...heatmapPoints].reverse().map((pt, i) => (
+        <Scatter name="Feeds" data={heatmapPoints}>
+          {heatmapPoints.map((pt, i) => (
             <Cell key={i} fill={heatColor(pt.z)} />
           ))}
         </Scatter>
@@ -716,7 +719,7 @@ for (let i = 1; i < sortedAll.length; i += 1) {
                     <div>
                       <p className="text-lg font-semibold text-gray-800">{headerDate}</p>
                       <p className="text-sm text-gray-500">
-                        {group.count} feed{group.count > 1 ? 's' : ''} • {group.consumedTotal.toFixed(0)} ml consumed • {group.notConsumedTotal.toFixed(0)} ml wasted
+                        {group.count} feed{group.count > 1 ? 's' : ''} • {group.consumedTotal} ml consumed • {group.notConsumedTotal} ml wasted
                       </p>
                     </div>
                   </div>
